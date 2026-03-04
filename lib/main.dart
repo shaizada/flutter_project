@@ -12,7 +12,8 @@ class BarcelonaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Barcelona Fan App',
       theme: ThemeData(
-        primaryColor: Color(0xFF004D98), // Barcelona Blue
+        primaryColor: Color(0xFF004D98),
+        fontFamily: 'Roboto',
       ),
       home: RegisterPage(),
     );
