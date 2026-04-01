@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'edit_profile_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final String lang;
   final Function(String) onLangChange;
-  final String userName; // Принимаем имя пользователя из регистрации
+  final String userName;
 
   const ProfileScreen({
     super.key,
@@ -13,8 +14,50 @@ class ProfileScreen extends StatelessWidget {
   });
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  // Осы жерде локальный айнымалылар сақталады
+  late String currentName;
+  String currentEmail = "viscaelbarca@example.com";
+
+  @override
+  void initState() {
+    super.initState();
+    currentName = widget.userName; // Бастапқы есімді регистрациядан аламыз
+  }
+
+  // Өңдеу бетіне барып, деректерді алып келу функциясы
+  Future<void> _goToEditProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+      builder: (context) => EditProfileScreen(
+  lang: widget.lang,
+  initialName: currentName,    // Осыны қосу керек
+  initialEmail: currentEmail,  // Және осыны
+),
+      ),
+    );
+
+    // Егер деректер қайтарылса, экранды жаңартамыз
+    if (result != null && result is Map<String, String>) {
+      setState(() {
+        currentName = result['name']!;
+        currentEmail = result['email']!;
+      });
+    }
+  }
+
+  void _showDummyPage(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("$title беті дайындалуда...")),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Словарь для перевода профиля
     final Map<String, Map<String, String>> t = {
       'KZ': {
         'title': 'ПРОФИЛЬ',
@@ -48,10 +91,10 @@ class ProfileScreen extends StatelessWidget {
       },
     };
 
-    final words = t[lang]!;
+    final words = t[widget.lang]!;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // Для общего градиента
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(words['title']!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
@@ -61,7 +104,6 @@ class ProfileScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- ВЕРХНЯЯ КАРТОЧКА ПРОФИЛЯ ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -74,12 +116,12 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    userName, // ТУТ ТЕПЕРЬ ОТОБРАЖАЕТСЯ ИМЯ ИЗ РЕГИСТРАЦИИ
+                    currentName, // Өзгертілген есім осы жерде көрінеді
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  const Text(
-                    'viscaelbarca@example.com',
-                    style: TextStyle(color: Colors.white70),
+                  Text(
+                    currentEmail, // Өзгертілген email
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
@@ -87,7 +129,6 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            // --- БЕЛАЯ ПАНЕЛЬ С НАСТРОЙКАМИ ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
               decoration: const BoxDecoration(
@@ -97,7 +138,6 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ВЫБОР ЯЗЫКА
                   Text(words['select_lang']!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 15),
                   Row(
@@ -110,14 +150,15 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const Divider(height: 40),
 
-                  // ПУНКТЫ МЕНЮ
-                  _buildMenuItem(Icons.shopping_bag_outlined, words['orders']!),
-                  _buildMenuItem(Icons.location_on_outlined, words['address']!),
-                  _buildMenuItem(Icons.payment_outlined, words['payment']!),
-                  _buildMenuItem(Icons.notifications_none, words['notifications']!),
-                  _buildMenuItem(Icons.settings_outlined, words['settings']!),
+                  // Енді барлық батырмаларға функция қосылды
+                  _buildMenuItem(Icons.shopping_bag_outlined, words['orders']!, () => _showDummyPage(words['orders']!)),
+                  _buildMenuItem(Icons.location_on_outlined, words['address']!, () => _showDummyPage(words['address']!)),
+                  _buildMenuItem(Icons.payment_outlined, words['payment']!, () => _showDummyPage(words['payment']!)),
+                  _buildMenuItem(Icons.notifications_none, words['notifications']!, () => _showDummyPage(words['notifications']!)),
+                  _buildMenuItem(Icons.settings_outlined, words['settings']!, _goToEditProfile),
+
                   const Divider(height: 30),
-                  _buildMenuItem(Icons.logout, words['exit']!, isExit: true),
+                  _buildMenuItem(Icons.logout, words['exit']!, () => Navigator.pop(context), isExit: true),
                   
                   const SizedBox(height: 50),
                 ],
@@ -129,11 +170,10 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Кнопка выбора языка
   Widget _langButton(String label) {
-    bool isSelected = lang == label;
+    bool isSelected = widget.lang == label;
     return GestureDetector(
-      onTap: () => onLangChange(label),
+      onTap: () => widget.onLangChange(label),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
@@ -152,7 +192,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title, {bool isExit = false}) {
+  Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap, {bool isExit = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -169,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
