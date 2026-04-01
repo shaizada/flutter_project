@@ -7,16 +7,93 @@ class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key, required this.lang, required this.cardData});
 
   @override
+  // Бұл жерде класс аты төмендегімен сәйкес болуы керек
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
+// ҚАТЕ ОСЫ ЖЕРДЕ БОЛДЫ: _ProfileScreenState емес, _PaymentScreenState болуы керек
 class _PaymentScreenState extends State<PaymentScreen> {
+  // Деректерді экранда жаңарту үшін осы айнымалыны қолданамыз
   late Map<String, String> currentCard;
 
   @override
   void initState() {
     super.initState();
-    currentCard = widget.cardData;
+    // widget.cardData-дан деректерді көшіріп аламыз
+    currentCard = Map.from(widget.cardData); 
+  }
+
+  // Өңдеу диалогы (BottomSheet)
+  void _showEditDialog() {
+    final numberController = TextEditingController(text: currentCard['number']);
+    final holderController = TextEditingController(text: currentCard['holder']);
+    final expiryController = TextEditingController(text: currentCard['expiry']);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom, 
+          left: 25, 
+          right: 25, 
+          top: 25
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.lang == 'KZ' ? "Картаны өңдеу" : "Редактирование",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: numberController,
+              decoration: const InputDecoration(labelText: "Card Number", border: OutlineInputBorder()),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: holderController,
+              decoration: const InputDecoration(labelText: "Card Holder", border: OutlineInputBorder()),
+              textCapitalization: TextCapitalization.characters,
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: expiryController,
+              decoration: const InputDecoration(labelText: "Expiry (MM/YY)", border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 25),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFA50044),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                setState(() {
+                  // Жаңа мәндерді айнымалыға сақтаймыз
+                  currentCard = {
+                    'number': numberController.text,
+                    'holder': holderController.text,
+                    'expiry': expiryController.text,
+                  };
+                });
+                Navigator.pop(context); // Диалогты жабу
+              },
+              child: Text(
+                widget.lang == 'KZ' ? "Сақтау" : "Сохранить",
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -29,11 +106,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
         title: Text(title, style: const TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFFA50044),
         elevation: 0,
+        // Артқа қайтқанда жаңарған деректі ProfileScreen-ге береміз
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context, currentCard),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- КАРТА ДИЗАЙНЫ ---
             Container(
@@ -46,7 +127,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
               ),
               padding: const EdgeInsets.all(25),
               child: Column(
@@ -58,7 +139,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     child: Icon(Icons.credit_card, color: Colors.white, size: 40),
                   ),
                   Text(
-                    currentCard['number'] ?? "**** **** **** ****",
+                    currentCard['number']!.isEmpty ? "**** **** **** ****" : currentCard['number']!,
                     style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 2),
                   ),
                   Row(
@@ -68,14 +149,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text("CARD HOLDER", style: TextStyle(color: Colors.white70, fontSize: 10)),
-                          Text(currentCard['holder'] ?? "NAME SURNAME", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text(currentCard['holder']!.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text("EXPIRES", style: TextStyle(color: Colors.white70, fontSize: 10)),
-                          Text(currentCard['expiry'] ?? "00/00", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text(currentCard['expiry']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -85,38 +166,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: 30),
             
-            // КАРТАНЫ ӨЗГЕРТУ БАТЫРМАСЫ
-            ListTile(
-              leading: const Icon(Icons.edit, color: Color(0xFF004D98)),
-              title: Text(widget.lang == 'KZ' ? 'Картаны өңдеу' : 'Редактировать карту'),
-              onTap: () async {
-                // Бұл жерде AddCardScreen-ге өтеміз (оны келесі қадамда жасаймыз)
-                _showEditDialog();
-              },
+            // --- ӨҢДЕУ БАТЫРМАСЫ ---
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              child: ListTile(
+                leading: const Icon(Icons.edit, color: Color(0xFF004D98)),
+                title: Text(widget.lang == 'KZ' ? 'Картаны өңдеу' : 'Редактировать карту'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: _showEditDialog,
+              ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Уақытша өңдеу диалогы (кейін жеке бетке ауыстырамыз)
-  void _showEditDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(decoration: const InputDecoration(labelText: "Card Number")),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Save"),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),

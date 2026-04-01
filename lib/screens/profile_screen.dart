@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'edit_profile_screen.dart';
+import 'address_screen.dart';
+import 'payment_screen.dart'; // Төлем бетін импорттау
 
 class ProfileScreen extends StatefulWidget {
   final String lang;
@@ -18,30 +20,84 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Осы жерде локальный айнымалылар сақталады
+  // Деректерді сақтайтын айнымалылар
   late String currentName;
   String currentEmail = "viscaelbarca@example.com";
+  String currentAddress = "Алматы, Абай даңғылы, 10";
+
+  // КАРТА ДЕРЕКТЕРІ (Осы жерде сақталады)
+  Map<String, String> userCard = {
+    'number': '4444 5555 6666 7777',
+    'holder': 'VISCA EL BARCA',
+    'expiry': '12/28',
+  };
 
   @override
   void initState() {
     super.initState();
-    currentName = widget.userName; // Бастапқы есімді регистрациядан аламыз
+    currentName = widget.userName;
   }
 
-  // Өңдеу бетіне барып, деректерді алып келу функциясы
-  Future<void> _goToEditProfile() async {
+  // --- БАРЛЫҚ НАВИГАЦИЯ ФУНКЦИЯЛАРЫ ---
+
+  // 1. Тапсырыстар
+  void _goToOrders() {
+    _showPlaceholder(widget.lang == 'KZ' ? "Тапсырыстар" : "Заказы");
+  }
+
+  // 2. Мекен-жай
+  Future<void> _goToAddress() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-      builder: (context) => EditProfileScreen(
-  lang: widget.lang,
-  initialName: currentName,    // Осыны қосу керек
-  initialEmail: currentEmail,  // Және осыны
-),
+        builder: (context) => AddressScreen(
+          lang: widget.lang, 
+          initialAddress: currentAddress
+        ),
+      ),
+    );
+    if (result != null && result is String) {
+      setState(() => currentAddress = result);
+    }
+  }
+
+  // 3. Төлем әдістері (ҚАЗІР ОСЫНЫ ТОЛЫҚТАДЫҚ)
+  Future<void> _goToPayment() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentScreen(
+          lang: widget.lang, 
+          cardData: userCard
+        ),
       ),
     );
 
-    // Егер деректер қайтарылса, экранды жаңартамыз
+    // Егер PaymentScreen-нен жаңа карта деректері келсе, оны сақтаймыз
+    if (result != null && result is Map<String, String>) {
+      setState(() {
+        userCard = result;
+      });
+    }
+  }
+
+  // 4. Хабарламалар
+  void _goToNotifications() {
+    _showPlaceholder(widget.lang == 'KZ' ? "Хабарламалар" : "Уведомления");
+  }
+
+  // 5. Баптаулар
+  Future<void> _goToSettings() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfileScreen(
+          lang: widget.lang,
+          initialName: currentName,
+          initialEmail: currentEmail,
+        ),
+      ),
+    );
     if (result != null && result is Map<String, String>) {
       setState(() {
         currentName = result['name']!;
@@ -50,9 +106,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showDummyPage(String title) {
+  void _showPlaceholder(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$title беті дайындалуда...")),
+      SnackBar(content: Text("$title беті жақында дайын болады!")),
     );
   }
 
@@ -116,19 +172,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    currentName, // Өзгертілген есім осы жерде көрінеді
+                    currentName,
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
-                    currentEmail, // Өзгертілген email
+                    currentEmail,
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 10),
-
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
               decoration: const BoxDecoration(
@@ -150,16 +204,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(height: 40),
 
-                  // Енді барлық батырмаларға функция қосылды
-                  _buildMenuItem(Icons.shopping_bag_outlined, words['orders']!, () => _showDummyPage(words['orders']!)),
-                  _buildMenuItem(Icons.location_on_outlined, words['address']!, () => _showDummyPage(words['address']!)),
-                  _buildMenuItem(Icons.payment_outlined, words['payment']!, () => _showDummyPage(words['payment']!)),
-                  _buildMenuItem(Icons.notifications_none, words['notifications']!, () => _showDummyPage(words['notifications']!)),
-                  _buildMenuItem(Icons.settings_outlined, words['settings']!, _goToEditProfile),
+                  _buildMenuItem(Icons.shopping_bag_outlined, words['orders']!, _goToOrders),
+                  _buildMenuItem(Icons.location_on_outlined, words['address']!, _goToAddress),
+                  _buildMenuItem(Icons.payment_outlined, words['payment']!, _goToPayment), // Енді жұмыс істейді
+                  _buildMenuItem(Icons.notifications_none, words['notifications']!, _goToNotifications),
+                  _buildMenuItem(Icons.settings_outlined, words['settings']!, _goToSettings),
 
                   const Divider(height: 30),
                   _buildMenuItem(Icons.logout, words['exit']!, () => Navigator.pop(context), isExit: true),
-                  
                   const SizedBox(height: 50),
                 ],
               ),
@@ -181,13 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -195,19 +241,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap, {bool isExit = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
       child: ListTile(
         leading: Icon(icon, color: isExit ? Colors.red : const Color(0xFFA50044)),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: isExit ? Colors.red : Colors.black,
-          ),
-        ),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: isExit ? Colors.red : Colors.black)),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         onTap: onTap,
       ),
