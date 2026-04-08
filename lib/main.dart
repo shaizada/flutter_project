@@ -3,19 +3,21 @@ import 'screens/home_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/auth_screen.dart'; // Не забудь про импорт!
+import 'screens/auth_screen.dart';
+import 'screens/seller/seller_main.dart'; // ЖАҢА: Сатушы бетінің импорты
 
 void main() {
   runApp(const BarcaStoreApp());
 }
 
-// ГЛОБАЛЬНЫЕ ДАННЫЕ (не трогаем списки)
+// ГЛОБАЛЬНЫЕ ДАННЫЕ
 List<Map<String, dynamic>> cartItems = [];
 List<Map<String, dynamic>> favoriteItems = [];
 
-// НОВАЯ ПЕРЕМЕННАЯ ДЛЯ ИМЕНИ ПОЛЬЗОВАТЕЛЯ
-String currentUserName = 'Culer №1'; // Стандартное имя
-bool isUserRegistered = false; // Флаг регистрации
+// ПАЙДАЛАНУШЫ МӘЛІМЕТТЕРІ
+String currentUserName = 'Culer №1';
+String currentUserRole = 'Buyer'; 
+bool isUserRegistered = false;
 
 class BarcaStoreApp extends StatefulWidget {
   const BarcaStoreApp({super.key});
@@ -33,10 +35,10 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
     });
   }
 
-  // Функция для сохранения имени при регистрации
-  void registerUser(String name) {
+  void registerUser(String name, String role) {
     setState(() {
       currentUserName = name;
+      currentUserRole = role; 
       isUserRegistered = true;
     });
   }
@@ -49,32 +51,38 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
       theme: ThemeData(
         primaryColor: const Color(0xFF004D98),
       ),
-      // ОБОРАЧИВАЕМ ВСЁ В ГРАДИЕНТ
       home: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF004D98), // Синий
-              Color(0xFFA50044), // Гранатовый
-            ],
+            colors: [Color(0xFF004D98), Color(0xFFA50044)],
             stops: [0.0, 0.7],
           ),
         ),
-        // ЛОГИКА ЗАПУСКА
-        child: isUserRegistered
-            ? MainNavigationScreen(
-                currentLang: currentLang,
-                onLangChange: updateLanguage,
-              )
-            : SplashOrRegistration(onRegisterSuccess: registerUser),
+        // ЛОГИКА: Тіркелуге байланысты рөл бойынша бөлу
+        // main.dart ішіндегі логика бөлімі:
+child: isUserRegistered
+    ? (currentUserRole == "Seller" 
+        ? SellerNavigationScreen(
+            currentLang: currentLang,
+            onLangChange: updateLanguage,
+            userName: currentUserName,
+            onLogout: () => setState(() => isUserRegistered = false), // Шығу функциясы
+          ) 
+        : MainNavigationScreen(
+            currentLang: currentLang,
+            onLangChange: updateLanguage,
+          ))
+    : SplashOrRegistration(onRegisterSuccess: registerUser),
       ),
     );
   }
 }
 
-// (MainNavigationScreen и остальные классы остаются без изменений в main.dart)
+// -------------------------------------------------------------------
+// САТЫП АЛУШЫНЫҢ БЕТІ (MainNavigationScreen өзгеріссіз)
+// -------------------------------------------------------------------
 class MainNavigationScreen extends StatefulWidget {
   final String currentLang;
   final Function(String) onLangChange;
@@ -94,7 +102,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Список экранов (в ProfileScreen передаем имя пользователя)
     final List<Widget> screens = [
       HomeScreen(lang: widget.currentLang),
       FavoritesScreen(lang: widget.currentLang),
@@ -102,7 +109,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ProfileScreen(
         lang: widget.currentLang, 
         onLangChange: widget.onLangChange,
-        userName: currentUserName, // ПЕРЕДАЕМ ИМЯ!
+        userName: currentUserName,
       ),
     ];
 
