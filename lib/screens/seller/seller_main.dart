@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'products_screen.dart';
 import 'profile_screen.dart';
+import 'statistics_screen.dart'; // ЖАҢА ИМПОРТ
 
 class SellerNavigationScreen extends StatefulWidget {
   final String currentLang;
@@ -25,10 +26,10 @@ class _SellerNavigationScreenState extends State<SellerNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Беттер тізімі
+    // Беттер тізімін жаңа файлдармен жаңарттық
     final List<Widget> _pages = [
       const SellerProductsScreen(),
-      const Center(child: Text("Статистика жақында қосылады", style: TextStyle(color: Colors.white))),
+      const SellerStatisticsScreen(), // Енді бұл жерде нақты статистика беті
       SellerProfileScreen(
         lang: widget.currentLang,
         onLangChange: widget.onLangChange,
@@ -47,18 +48,45 @@ class _SellerNavigationScreenState extends State<SellerNavigationScreen> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        // IndexedStack қолдану арқылы беттер ауысқанда тауарлар тізімі жоғалмайды
         body: IndexedStack(index: _selectedIndex, children: _pages),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFFA50044),
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Тауарлар'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Статистика'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Профиль'),
-          ],
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+              )
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) => setState(() => _selectedIndex = index),
+              backgroundColor: Colors.white,
+              selectedItemColor: const Color(0xFFA50044),
+              unselectedItemColor: Colors.grey,
+              type: BottomNavigationBarType.fixed, // Батырмалар бір қалыпты тұруы үшін
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  activeIcon: Icon(Icons.inventory_2),
+                  label: 'Тауарлар',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart_outlined),
+                  activeIcon: Icon(Icons.bar_chart),
+                  label: 'Статистика',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Профиль',
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
