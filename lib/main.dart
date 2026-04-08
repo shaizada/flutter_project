@@ -4,7 +4,7 @@ import 'screens/favorites_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/auth_screen.dart';
-import 'screens/seller/seller_main.dart'; // ЖАҢА: Сатушы бетінің импорты
+import 'screens/seller/seller_main.dart';
 
 void main() {
   runApp(const BarcaStoreApp());
@@ -14,7 +14,7 @@ void main() {
 List<Map<String, dynamic>> cartItems = [];
 List<Map<String, dynamic>> favoriteItems = [];
 
-// ПАЙДАЛАНУШЫ МӘЛІМЕТТЕРІ
+// ПАЙДАЛАНУШЫ МӘЛІМЕТТЕРІ (Орталықтандырылған күй)
 String currentUserName = 'Culer №1';
 String currentUserRole = 'Buyer'; 
 bool isUserRegistered = false;
@@ -43,6 +43,15 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
     });
   }
 
+  // ШЫҒУ ФУНКЦИЯСЫ: Енді бұл ортақ
+  void logout() {
+    setState(() {
+      isUserRegistered = false;
+      // Мәліметтерді бастапқы күйге келтіру (опционально)
+      currentUserRole = 'Buyer';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -60,37 +69,42 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
             stops: [0.0, 0.7],
           ),
         ),
-        // ЛОГИКА: Тіркелуге байланысты рөл бойынша бөлу
-        // main.dart ішіндегі логика бөлімі:
-child: isUserRegistered
-    ? (currentUserRole == "Seller" 
-        ? SellerNavigationScreen(
-            currentLang: currentLang,
-            onLangChange: updateLanguage,
-            userName: currentUserName,
-            onLogout: () => setState(() => isUserRegistered = false), // Шығу функциясы
-          ) 
-        : MainNavigationScreen(
-            currentLang: currentLang,
-            onLangChange: updateLanguage,
-          ))
-    : SplashOrRegistration(onRegisterSuccess: registerUser),
+        // НЕГІЗГІ ЛОГИКА: Егер тіркелсе - рөліне қарай, тіркелмесе - AuthScreen
+        child: isUserRegistered
+            ? (currentUserRole == "Seller" 
+                ? SellerNavigationScreen(
+                    currentLang: currentLang,
+                    onLangChange: updateLanguage,
+                    userName: currentUserName,
+                    onLogout: logout, // Сатушыға берілді
+                  ) 
+                : MainNavigationScreen(
+                    currentLang: currentLang,
+                    onLangChange: updateLanguage,
+                    userName: currentUserName,
+                    onLogout: logout, // ЕНДІ САТЫП АЛУШЫҒА ДА БЕРІЛДІ
+                  ))
+            : SplashOrRegistration(onRegisterSuccess: registerUser),
       ),
     );
   }
 }
 
 // -------------------------------------------------------------------
-// САТЫП АЛУШЫНЫҢ БЕТІ (MainNavigationScreen өзгеріссіз)
+// САТЫП АЛУШЫНЫҢ БЕТІ (Навигация)
 // -------------------------------------------------------------------
 class MainNavigationScreen extends StatefulWidget {
   final String currentLang;
   final Function(String) onLangChange;
+  final String userName;
+  final VoidCallback onLogout; // ЖАҢА: Logout қосылды
 
   const MainNavigationScreen({
     super.key, 
     required this.currentLang, 
-    required this.onLangChange
+    required this.onLangChange,
+    required this.userName,
+    required this.onLogout,
   });
 
   @override
@@ -102,6 +116,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Профиль бетіне барлық қажетті параметрлерді өткіземіз
     final List<Widget> screens = [
       HomeScreen(lang: widget.currentLang),
       FavoritesScreen(lang: widget.currentLang),
@@ -109,7 +124,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ProfileScreen(
         lang: widget.currentLang, 
         onLangChange: widget.onLangChange,
-        userName: currentUserName,
+        userName: widget.userName,
+        onLogout: widget.onLogout, // МІНЕ ОСЫ ЖЕРДЕ ҚАТЕ БОЛҒАН, ЕНДІ ТҮЗЕЛДІ
       ),
     ];
 

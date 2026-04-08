@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'edit_profile_screen.dart';
 import 'address_screen.dart';
-import 'payment_screen.dart'; // Төлем бетін импорттау
+import 'payment_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String lang;
   final Function(String) onLangChange;
   final String userName;
+  final VoidCallback onLogout; // ЖАҢА: Шығу функциясы
 
   const ProfileScreen({
     super.key,
     required this.lang,
     required this.onLangChange,
     required this.userName,
+    required this.onLogout, // Міндетті түрде қосылды
   });
 
   @override
@@ -20,12 +22,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Деректерді сақтайтын айнымалылар
   late String currentName;
   String currentEmail = "viscaelbarca@example.com";
   String currentAddress = "Алматы, Абай даңғылы, 10";
 
-  // КАРТА ДЕРЕКТЕРІ (Осы жерде сақталады)
   Map<String, String> userCard = {
     'number': '4444 5555 6666 7777',
     'holder': 'VISCA EL BARCA',
@@ -38,55 +38,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     currentName = widget.userName;
   }
 
-  // --- БАРЛЫҚ НАВИГАЦИЯ ФУНКЦИЯЛАРЫ ---
+  // --- НАВИГАЦИЯ ---
+  void _goToOrders() => _showPlaceholder(widget.lang == 'KZ' ? "Тапсырыстар" : "Заказы");
 
-  // 1. Тапсырыстар
-  void _goToOrders() {
-    _showPlaceholder(widget.lang == 'KZ' ? "Тапсырыстар" : "Заказы");
-  }
-
-  // 2. Мекен-жай
   Future<void> _goToAddress() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddressScreen(
-          lang: widget.lang, 
-          initialAddress: currentAddress
-        ),
+        builder: (context) => AddressScreen(lang: widget.lang, initialAddress: currentAddress),
       ),
     );
-    if (result != null && result is String) {
-      setState(() => currentAddress = result);
-    }
+    if (result != null && result is String) setState(() => currentAddress = result);
   }
 
-  // 3. Төлем әдістері (ҚАЗІР ОСЫНЫ ТОЛЫҚТАДЫҚ)
   Future<void> _goToPayment() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PaymentScreen(
-          lang: widget.lang, 
-          cardData: userCard
-        ),
+        builder: (context) => PaymentScreen(lang: widget.lang, cardData: userCard),
       ),
     );
-
-    // Егер PaymentScreen-нен жаңа карта деректері келсе, оны сақтаймыз
-    if (result != null && result is Map<String, String>) {
-      setState(() {
-        userCard = result;
-      });
-    }
+    if (result != null && result is Map<String, String>) setState(() => userCard = result);
   }
 
-  // 4. Хабарламалар
-  void _goToNotifications() {
-    _showPlaceholder(widget.lang == 'KZ' ? "Хабарламалар" : "Уведомления");
-  }
+  void _goToNotifications() => _showPlaceholder(widget.lang == 'KZ' ? "Хабарламалар" : "Уведомления");
 
-  // 5. Баптаулар
   Future<void> _goToSettings() async {
     final result = await Navigator.push(
       context,
@@ -107,9 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showPlaceholder(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$title беті жақында дайын болады!")),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$title беті жақында дайын болады!")));
   }
 
   @override
@@ -160,6 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Аватар бөлімі
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -171,20 +146,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Icon(Icons.person, size: 60, color: Colors.white),
                   ),
                   const SizedBox(height: 15),
-                  Text(
-                    currentName,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  Text(
-                    currentEmail,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
+                  Text(currentName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(currentEmail, style: const TextStyle(color: Colors.white70)),
                 ],
               ),
             ),
             const SizedBox(height: 10),
+            // Ақ меню бөлімі
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+              padding: const EdgeInsets.fromLTRB(20, 30, 20, 50),
               decoration: const BoxDecoration(
                 color: Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
@@ -203,16 +173,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   const Divider(height: 40),
-
                   _buildMenuItem(Icons.shopping_bag_outlined, words['orders']!, _goToOrders),
                   _buildMenuItem(Icons.location_on_outlined, words['address']!, _goToAddress),
-                  _buildMenuItem(Icons.payment_outlined, words['payment']!, _goToPayment), // Енді жұмыс істейді
+                  _buildMenuItem(Icons.payment_outlined, words['payment']!, _goToPayment),
                   _buildMenuItem(Icons.notifications_none, words['notifications']!, _goToNotifications),
                   _buildMenuItem(Icons.settings_outlined, words['settings']!, _goToSettings),
-
                   const Divider(height: 30),
-                  _buildMenuItem(Icons.logout, words['exit']!, () => Navigator.pop(context), isExit: true),
-                  const SizedBox(height: 50),
+                  
+                  // ТҮЗЕТІЛГЕН ШЫҒУ БАТЫРМАСЫ
+                  _buildMenuItem(
+                    Icons.logout, 
+                    words['exit']!, 
+                    widget.onLogout, // Енді Navigator.pop емес, басты logout-ты шақырады
+                    isExit: true
+                  ),
                 ],
               ),
             ),
