@@ -5,13 +5,15 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.0
+  sdk: '>=3.11.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
   image_picker: ^1.2.1
+  # ЖАҢА: Анимациялар үшін lottie пакеті қосылды
+  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:
@@ -23,3 +25,5 @@ flutter:
 
   assets:
     - assets/products/
+    # Егер lottie файлдарын интернеттен емес, телефоннан оқығың келсе:
+    # - assets/animations/

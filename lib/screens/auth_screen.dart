@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class SplashOrRegistration extends StatefulWidget {
-  // Рөлді де жіберу үшін String name, String role деп өзгерттік
   final Function(String, String) onRegisterSuccess;
 
   const SplashOrRegistration({super.key, required this.onRegisterSuccess});
@@ -15,12 +14,58 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
   final TextEditingController _emailController = TextEditingController();
   
   bool _isLampOn = false; 
-  String _userRole = "Buyer"; // Бастапқы рөл: Сатып алушы
+  String _userRole = "Buyer"; 
 
   void _toggleLamp() {
     setState(() {
       _isLampOn = !_isLampOn;
     });
+  }
+
+  // --- ВАЛИДАЦИЯ ФУНКЦИЯЛАРЫ ---
+  
+  // Почта форматын тексеру (RegExp)
+  bool _isEmailValid(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  // Тіркелуді өңдеу
+  void _handleRegister() {
+    String name = _nameController.text.trim();
+    String email = _emailController.text.trim();
+
+    // 1. Бос па, тексеру
+    if (name.isEmpty || email.isEmpty) {
+      _showError('Барлық жолақты толтырыңыз! / Заполните все поля!');
+      return;
+    }
+
+    // 2. Аттың ұзындығын тексеру
+    if (name.length < 2) {
+      _showError('Есіміңіз тым қысқа! / Имя слишком короткое!');
+      return;
+    }
+
+    // 3. Почтаны тексеру
+    if (!_isEmailValid(email)) {
+      _showError('Почта форматы қате! / Неверный формат почты!');
+      return;
+    }
+
+    // Егер бәрі дұрыс болса:
+    widget.onRegisterSuccess(name, _userRole);
+  }
+
+  // Қатені көрсету (SnackBar)
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFA50044),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -55,7 +100,7 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
               ),
             ),
 
-            // 2. ОРТАЛЫҚТАҒЫ ФОРМА
+            // 2. ФОРМА
             Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -74,7 +119,6 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
                     ),
                     const SizedBox(height: 40),
 
-                    // Шам жанғанда шығатын бөлім
                     AnimatedOpacity(
                       opacity: _isLampOn ? 1.0 : 0.0,
                       duration: const Duration(milliseconds: 600),
@@ -82,7 +126,6 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
                         visible: _isLampOn,
                         child: Column(
                           children: [
-                            // --- РӨЛ ТАҢДАУ (ЖАҢА) ---
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -103,10 +146,10 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
                               controller: _emailController,
                               hint: 'E-mail / Почта',
                               icon: Icons.alternate_email,
+                              keyboardType: TextInputType.emailAddress, // Почтаға арналған пернетақта
                             ),
                             const SizedBox(height: 30),
 
-                            // БАТЫРМА
                             SizedBox(
                               width: double.infinity,
                               height: 55,
@@ -134,7 +177,6 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
     );
   }
 
-  // Рөлді таңдауға арналған стильді батырма (Chip)
   Widget _buildRoleChip(String roleId, String label, IconData icon) {
     bool isSelected = _userRole == roleId;
     return GestureDetector(
@@ -158,14 +200,12 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
     );
   }
 
-  void _handleRegister() {
-    if (_nameController.text.isNotEmpty) {
-      // Енді аты мен таңдалған рөлін қоса жібереміз
-      widget.onRegisterSuccess(_nameController.text.trim(), _userRole);
-    }
-  }
-
-  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon}) {
+  Widget _buildTextField({
+    required TextEditingController controller, 
+    required String hint, 
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
@@ -173,6 +213,7 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> with Ticker
       ),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,

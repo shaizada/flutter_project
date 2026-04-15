@@ -10,11 +10,14 @@ void main() {
   runApp(const BarcaStoreApp());
 }
 
-// ГЛОБАЛЬНЫЕ ДАННЫЕ
+// -------------------------------------------------------------------
+// ГЛОБАЛЬНЫЕ ДАННЫЕ (Ортақ тізімдер)
+// -------------------------------------------------------------------
 List<Map<String, dynamic>> cartItems = [];
 List<Map<String, dynamic>> favoriteItems = [];
+List<Map<String, dynamic>> myOrders = []; // ЖАҢА: Тапсырыстар тарихы
 
-// ПАЙДАЛАНУШЫ МӘЛІМЕТТЕРІ (Орталықтандырылған күй)
+// ПАЙДАЛАНУШЫ МӘЛІМЕТТЕРІ
 String currentUserName = 'Culer №1';
 String currentUserRole = 'Buyer'; 
 bool isUserRegistered = false;
@@ -43,12 +46,13 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
     });
   }
 
-  // ШЫҒУ ФУНКЦИЯСЫ: Енді бұл ортақ
   void logout() {
     setState(() {
       isUserRegistered = false;
-      // Мәліметтерді бастапқы күйге келтіру (опционально)
       currentUserRole = 'Buyer';
+      // Шыққан кезде себет пен тапсырыстарды тазартуға болады (опционально)
+      // cartItems.clear();
+      // myOrders.clear();
     });
   }
 
@@ -69,20 +73,19 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
             stops: [0.0, 0.7],
           ),
         ),
-        // НЕГІЗГІ ЛОГИКА: Егер тіркелсе - рөліне қарай, тіркелмесе - AuthScreen
         child: isUserRegistered
             ? (currentUserRole == "Seller" 
                 ? SellerNavigationScreen(
                     currentLang: currentLang,
                     onLangChange: updateLanguage,
                     userName: currentUserName,
-                    onLogout: logout, // Сатушыға берілді
+                    onLogout: logout,
                   ) 
                 : MainNavigationScreen(
                     currentLang: currentLang,
                     onLangChange: updateLanguage,
                     userName: currentUserName,
-                    onLogout: logout, // ЕНДІ САТЫП АЛУШЫҒА ДА БЕРІЛДІ
+                    onLogout: logout,
                   ))
             : SplashOrRegistration(onRegisterSuccess: registerUser),
       ),
@@ -97,7 +100,7 @@ class MainNavigationScreen extends StatefulWidget {
   final String currentLang;
   final Function(String) onLangChange;
   final String userName;
-  final VoidCallback onLogout; // ЖАҢА: Logout қосылды
+  final VoidCallback onLogout;
 
   const MainNavigationScreen({
     super.key, 
@@ -116,7 +119,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Профиль бетіне барлық қажетті параметрлерді өткіземіз
+    // Screens тізімін әр build сайын жаңартып отырамыз
     final List<Widget> screens = [
       HomeScreen(lang: widget.currentLang),
       FavoritesScreen(lang: widget.currentLang),
@@ -125,13 +128,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         lang: widget.currentLang, 
         onLangChange: widget.onLangChange,
         userName: widget.userName,
-        onLogout: widget.onLogout, // МІНЕ ОСЫ ЖЕРДЕ ҚАТЕ БОЛҒАН, ЕНДІ ТҮЗЕЛДІ
+        onLogout: widget.onLogout,
       ),
     ];
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: screens[_selectedIndex],
+      body: IndexedStack( // IndexedStack беттің күйін (scroll т.б.) сақтауға көмектеседі
+        index: _selectedIndex,
+        children: screens,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

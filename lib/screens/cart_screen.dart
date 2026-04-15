@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import 'checkout_screen.dart'; // ЖАҢА: Checkout бетін импорттау
 
 class CartScreen extends StatefulWidget {
-  final String lang; // Принимаем язык
+  final String lang;
 
   const CartScreen({super.key, required this.lang});
 
@@ -12,7 +13,6 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   
-  // Словарь для корзины
   final Map<String, Map<String, String>> localizedText = {
     'KZ': {
       'title': 'СЕБЕТ',
@@ -41,7 +41,7 @@ class _CartScreenState extends State<CartScreen> {
     final t = localizedText[widget.lang]!;
 
     return Scaffold(
-      backgroundColor: Colors.transparent, // Для градиента
+      backgroundColor: Colors.transparent, 
       appBar: AppBar(
         title: Text(t['title']!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
@@ -80,7 +80,10 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.network(item['image'], width: 60, height: 60, fit: BoxFit.cover),
+            // Егер сурет assets-те болса Image.asset, желіде болса Image.network қолдан
+            child: item['image'].startsWith('http') 
+                ? Image.network(item['image'], width: 60, height: 60, fit: BoxFit.cover)
+                : Image.asset(item['image'], width: 60, height: 60, fit: BoxFit.cover),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -139,7 +142,24 @@ class _CartScreenState extends State<CartScreen> {
                 backgroundColor: const Color(0xFF004D98),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               ),
-              onPressed: () {},
+              onPressed: () {
+                // ТАПСЫРЫС БЕРУ БЕТІНЕ ӨТУ
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CheckoutScreen(
+                      items: List.from(cartItems), // Тізімнің көшірмесін жібереміз
+                      address: "Алматы, Абай даңғылы, 10", // Уақытша немесе Profile-дан келетін дерек
+                      cardData: {
+                        'number': '4444 5555 6666 7777',
+                        'holder': 'VISCA EL BARCA',
+                        'expiry': '12/28',
+                      }, 
+                      lang: widget.lang,
+                    ),
+                  ),
+                );
+              },
               child: Text(t['order']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),

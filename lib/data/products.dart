@@ -117,13 +117,13 @@ List<Map<String, dynamic>> barcaProducts = [
   {
     'name': 'Johan Cruyff Tribute',
     'price': 50000,
-    'image': 'assets/products/cruyff.jpg',
+    'image': 'assets/products/cruyff.webp',
     'category': 'Retro',
   },
   {
     'name': 'Retro Tracksuit 80s',
     'price': 38000,
-    'image': 'assets/products/retro_track.jpg',
+    'image': 'assets/products/retro_track.webp',
     'category': 'Retro',
   },
 ];

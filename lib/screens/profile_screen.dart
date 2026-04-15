@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'edit_profile_screen.dart';
 import 'address_screen.dart';
 import 'payment_screen.dart';
+import 'orders_screen.dart'; // ЖАҢА: Тапсырыстар бетін импорттау
 
 class ProfileScreen extends StatefulWidget {
   final String lang;
   final Function(String) onLangChange;
   final String userName;
-  final VoidCallback onLogout; // ЖАҢА: Шығу функциясы
+  final VoidCallback onLogout;
 
   const ProfileScreen({
     super.key,
     required this.lang,
     required this.onLangChange,
     required this.userName,
-    required this.onLogout, // Міндетті түрде қосылды
+    required this.onLogout,
   });
 
   @override
@@ -39,7 +40,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- НАВИГАЦИЯ ---
-  void _goToOrders() => _showPlaceholder(widget.lang == 'KZ' ? "Тапсырыстар" : "Заказы");
+  
+  // ТҮЗЕТІЛДІ: Енді Placeholder емес, нағыз OrdersScreen-ге барады
+  void _goToOrders() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrdersScreen(lang: widget.lang),
+      ),
+    );
+  }
 
   Future<void> _goToAddress() async {
     final result = await Navigator.push(
@@ -180,11 +190,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildMenuItem(Icons.settings_outlined, words['settings']!, _goToSettings),
                   const Divider(height: 30),
                   
-                  // ТҮЗЕТІЛГЕН ШЫҒУ БАТЫРМАСЫ
                   _buildMenuItem(
                     Icons.logout, 
                     words['exit']!, 
-                    widget.onLogout, // Енді Navigator.pop емес, басты logout-ты шақырады
+                    widget.onLogout, 
                     isExit: true
                   ),
                 ],
