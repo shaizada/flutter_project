@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/cart_screen.dart';
@@ -6,24 +7,37 @@ import 'screens/profile_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/seller/seller_main.dart';
 
-void main() {
-  runApp(const BarcaStoreApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  final prefs = await SharedPreferences.getInstance();
+  
+  bool isRegistered = prefs.getBool('is_logged_in') ?? false;
+  String savedName = prefs.getString('user_name') ?? 'Culer №1';
+  String savedRole = prefs.getString('user_role') ?? 'Buyer';
+
+  runApp(BarcaStoreApp(
+    isInitialRegistered: isRegistered,
+    initialName: savedName,
+    initialRole: savedRole,
+  ));
 }
 
-// -------------------------------------------------------------------
-// ГЛОБАЛЬНЫЕ ДАННЫЕ (Ортақ тізімдер)
-// -------------------------------------------------------------------
 List<Map<String, dynamic>> cartItems = [];
 List<Map<String, dynamic>> favoriteItems = [];
-List<Map<String, dynamic>> myOrders = []; // ЖАҢА: Тапсырыстар тарихы
-
-// ПАЙДАЛАНУШЫ МӘЛІМЕТТЕРІ
-String currentUserName = 'Culer №1';
-String currentUserRole = 'Buyer'; 
-bool isUserRegistered = false;
+List<Map<String, dynamic>> myOrders = [];
 
 class BarcaStoreApp extends StatefulWidget {
-  const BarcaStoreApp({super.key});
+  final bool isInitialRegistered;
+  final String initialName;
+  final String initialRole;
+
+  const BarcaStoreApp({
+    super.key, 
+    required this.isInitialRegistered,
+    required this.initialName,
+    required this.initialRole,
+  });
 
   @override
   State<BarcaStoreApp> createState() => _BarcaStoreAppState();
@@ -31,6 +45,17 @@ class BarcaStoreApp extends StatefulWidget {
 
 class _BarcaStoreAppState extends State<BarcaStoreApp> {
   String currentLang = 'KZ';
+  late bool isUserRegistered;
+  late String currentUserName;
+  late String currentUserRole;
+
+  @override
+  void initState() {
+    super.initState();
+    isUserRegistered = widget.isInitialRegistered;
+    currentUserName = widget.initialName;
+    currentUserRole = widget.initialRole;
+  }
 
   void updateLanguage(String newLang) {
     setState(() {
@@ -38,21 +63,22 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
     });
   }
 
-  void registerUser(String name, String role) {
+  void registerUser() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      currentUserName = name;
-      currentUserRole = role; 
       isUserRegistered = true;
+      currentUserName = prefs.getString('user_name') ?? 'User';
+      currentUserRole = prefs.getString('user_role') ?? 'Buyer';
     });
   }
 
-  void logout() {
+  void logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     setState(() {
       isUserRegistered = false;
       currentUserRole = 'Buyer';
-      // Шыққан кезде себет пен тапсырыстарды тазартуға болады (опционально)
-      // cartItems.clear();
-      // myOrders.clear();
+      currentUserName = 'Culer №1';
     });
   }
 
@@ -64,38 +90,38 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
       theme: ThemeData(
         primaryColor: const Color(0xFF004D98),
       ),
-      home: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF004D98), Color(0xFFA50044)],
-            stops: [0.0, 0.7],
+      // Градиенттің бүкіл қолданбада сақталуы үшін Scaffold-ты Container-мен ораймыз
+      home: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF004D98), Color(0xFFA50044)],
+              stops: [0.0, 0.7],
+            ),
           ),
+          child: isUserRegistered
+              ? (currentUserRole == "Seller" 
+                  ? SellerNavigationScreen(
+                      currentLang: currentLang,
+                      onLangChange: updateLanguage,
+                      userName: currentUserName,
+                      onLogout: logout,
+                    ) 
+                  : MainNavigationScreen(
+                      currentLang: currentLang,
+                      onLangChange: updateLanguage,
+                      userName: currentUserName,
+                      onLogout: logout,
+                    ))
+              : SplashOrRegistration(onRegisterSuccess: registerUser),
         ),
-        child: isUserRegistered
-            ? (currentUserRole == "Seller" 
-                ? SellerNavigationScreen(
-                    currentLang: currentLang,
-                    onLangChange: updateLanguage,
-                    userName: currentUserName,
-                    onLogout: logout,
-                  ) 
-                : MainNavigationScreen(
-                    currentLang: currentLang,
-                    onLangChange: updateLanguage,
-                    userName: currentUserName,
-                    onLogout: logout,
-                  ))
-            : SplashOrRegistration(onRegisterSuccess: registerUser),
       ),
     );
   }
 }
 
-// -------------------------------------------------------------------
-// САТЫП АЛУШЫНЫҢ БЕТІ (Навигация)
-// -------------------------------------------------------------------
 class MainNavigationScreen extends StatefulWidget {
   final String currentLang;
   final Function(String) onLangChange;
@@ -119,7 +145,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Screens тізімін әр build сайын жаңартып отырамыз
     final List<Widget> screens = [
       HomeScreen(lang: widget.currentLang),
       FavoritesScreen(lang: widget.currentLang),
@@ -133,8 +158,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: IndexedStack( // IndexedStack беттің күйін (scroll т.б.) сақтауға көмектеседі
+      // МАҢЫЗДЫ: Мұнда фоны ақ болып кетпеуі үшін Scaffold-ты мөлдір қыламыз
+      backgroundColor: Colors.transparent, 
+      body: IndexedStack(
         index: _selectedIndex,
         children: screens,
       ),
