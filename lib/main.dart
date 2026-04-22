@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart'; // 🔥 ҚОСЫЛДЫ
+import 'firebase_options.dart'; // 🔥 ҚОСЫЛДЫ (бұл файл сенде бар)
 import 'screens/home_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/cart_screen.dart';
@@ -9,6 +11,17 @@ import 'screens/seller/seller_main.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Firebase-ті нақты параметрлермен (options) іске қосамыз:
+ await Firebase.initializeApp(
+  options: const FirebaseOptions(
+    apiKey: "AIzaSyATtpMpDcHO5k-fAVDjE-ZsN-OU3M7t2LA",
+    appId: "1:845203405278:android:4a0908ca13b9b8e53c054f", // Скриншоттағы App ID
+    messagingSenderId: "845203405278",
+    projectId: "barca-store-final-2026",
+    storageBucket: "barca-store-final-2026.firebasestorage.app",
+  ),
+);
   
   final prefs = await SharedPreferences.getInstance();
   
@@ -23,6 +36,7 @@ void main() async {
   ));
 }
 
+// Себет пен таңдаулылар тізімі (Олар өзгеріссіз қалады)
 List<Map<String, dynamic>> cartItems = [];
 List<Map<String, dynamic>> favoriteItems = [];
 List<Map<String, dynamic>> myOrders = [];
@@ -90,8 +104,9 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
       theme: ThemeData(
         primaryColor: const Color(0xFF004D98),
       ),
-      // Градиенттің бүкіл қолданбада сақталуы үшін Scaffold-ты Container-мен ораймыз
       home: Scaffold(
+        // Мұндағы ақ экранды болдырмау үшін backgroundColor-ды мөлдір қыламыз
+        backgroundColor: Colors.transparent,
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -122,6 +137,7 @@ class _BarcaStoreAppState extends State<BarcaStoreApp> {
   }
 }
 
+// Төмендегі MainNavigationScreen кодын да өзің жібергендей қалдырдым, ол дұрыс жазылған.
 class MainNavigationScreen extends StatefulWidget {
   final String currentLang;
   final Function(String) onLangChange;
@@ -158,7 +174,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ];
 
     return Scaffold(
-      // МАҢЫЗДЫ: Мұнда фоны ақ болып кетпеуі үшін Scaffold-ты мөлдір қыламыз
       backgroundColor: Colors.transparent, 
       body: IndexedStack(
         index: _selectedIndex,

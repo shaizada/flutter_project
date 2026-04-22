@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 1. Бұл міндетті түрде керек
 
 class AddCardScreen extends StatefulWidget {
   final Map<String, String> initialData;
@@ -21,6 +22,23 @@ class _AddCardScreenState extends State<AddCardScreen> {
     _expiryController = TextEditingController(text: widget.initialData['expiry']);
   }
 
+  // 2. Деректі базаға жіберетін функция
+  Future<void> _saveToFirebase() async {
+    try {
+      await FirebaseFirestore.instance.collection('cards').add({
+        'number': _numberController.text,
+        'holder': _holderController.text,
+        'expiry': _expiryController.text,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        Navigator.pop(context); // Сақталған соң артқа қайтады
+      }
+    } catch (e) {
+      print("Қате шықты: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,13 +55,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
             const Spacer(),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF004D98), minimumSize: const Size(double.infinity, 50)),
-              onPressed: () {
-                Navigator.pop(context, {
-                  'number': _numberController.text,
-                  'holder': _holderController.text,
-                  'expiry': _expiryController.text,
-                });
-              },
+              onPressed: _saveToFirebase, // 3. Осы жерде функцияны шақырамыз
               child: const Text("Сақтау", style: TextStyle(color: Colors.white)),
             )
           ],

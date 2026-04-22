@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 🔥 Firebase пакеті
 
 class SplashOrRegistration extends StatefulWidget {
-  final VoidCallback onRegisterSuccess; // Callback функциясы
+  final VoidCallback onRegisterSuccess;
 
   const SplashOrRegistration({super.key, required this.onRegisterSuccess});
 
@@ -13,9 +14,11 @@ class SplashOrRegistration extends StatefulWidget {
 class _SplashOrRegistrationState extends State<SplashOrRegistration> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController(); // 🔥 Құпия сөз үшін
   
   bool _isLampOn = false; 
   String _userRole = "Buyer"; 
+  bool _isLoading = false; // Жүктелу күйі
 
   void _toggleLamp() {
     setState(() {
@@ -27,41 +30,54 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
-  // --- ДЕРЕКТЕРДІ САҚТАУ ЖӘНЕ ТЕКСЕРУ ---
+  // --- FIREBASE-ПЕН ТІРКЕЛУ ЖӘНЕ КІРУ ---
   Future<void> _handleRegister() async {
     String name = _nameController.text.trim();
     String email = _emailController.text.trim();
+    String password = _passwordController.text.trim(); // Firebase-ке пароль керек
 
-    if (name.isEmpty || email.isEmpty) {
-      _showError('Барлық жолақты толтырыңыз!');
+    if (name.isEmpty || email.isEmpty || password.length < 6) {
+      _showError('Барлық жолақты толтырыңыз! (Пароль мин. 6 таңба)');
       return;
     }
 
-    if (!_isEmailValid(email)) {
-      _showError('Почта форматы қате!');
-      return;
-    }
+    setState(() => _isLoading = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Бұрын тіркелген почтаны тексереміз
-    String? savedEmail = prefs.getString('user_email');
+    try {
+      // 1. Firebase-те тіркелуге немесе кіруге тырысамыз
+      UserCredential userCredential;
+      
+      try {
+        // Алдымен жаңа пайдаланушы ретінде тіркеу
+        userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          // Егер почта бар болса, жай ғана кіру (Login)
+          userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+        } else {
+          throw e;
+        }
+      }
 
-    if (savedEmail != null && savedEmail == email) {
-      // Егер почта сәйкес келсе - бұл "Войти" болып саналады
-      await prefs.setBool('is_logged_in', true);
-      widget.onRegisterSuccess();
-    } else if (savedEmail != null && savedEmail != email) {
-      // Егер басқа почта жазса, қате береміз
-      _showError('Бұл құрылғыда басқа пайдаланушы тіркелген!');
-    } else {
-      // ЖАҢА ТІРКЕЛУ
+      // 2. Сәтті өтсе, деректерді SharedPreferences-ке сақтаймыз (бұрынғыдай)
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_name', name);
       await prefs.setString('user_email', email);
       await prefs.setString('user_role', _userRole);
       await prefs.setBool('is_logged_in', true);
       
+      setState(() => _isLoading = false);
       widget.onRegisterSuccess();
+
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showError('Қате шықты: $e');
     }
   }
 
@@ -83,7 +99,7 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> {
         color: _isLampOn ? const Color(0xFF1C1F24) : const Color(0xFF0A0A0A),
         child: Stack(
           children: [
-            // 1. ШАМ (Баяғыдай қалады)
+            // 1. ШАМ
             Positioned(
               top: 0, right: 60,
               child: GestureDetector(
@@ -138,13 +154,21 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> {
                             _buildTextField(controller: _nameController, hint: 'Аты-жөні', icon: Icons.person_outline),
                             const SizedBox(height: 15),
                             _buildTextField(controller: _emailController, hint: 'E-mail', icon: Icons.alternate_email, keyboardType: TextInputType.emailAddress),
+                            const SizedBox(height: 15),
+                            _buildTextField(controller: _passwordController, hint: 'Пароль', icon: Icons.lock_outline, isPassword: true),
                             const SizedBox(height: 30),
                             SizedBox(
                               width: double.infinity, height: 55,
                               child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF004D98), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-                                onPressed: _handleRegister,
-                                child: const Text('КІРУ / ТІРКЕЛУ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white, 
+                                  foregroundColor: const Color(0xFF004D98), 
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))
+                                ),
+                                onPressed: _isLoading ? null : _handleRegister,
+                                child: _isLoading 
+                                  ? const CircularProgressIndicator()
+                                  : const Text('КІРУ / ТІРКЕЛУ', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                             ),
                           ],
@@ -183,13 +207,25 @@ class _SplashOrRegistrationState extends State<SplashOrRegistration> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon, TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField({
+    required TextEditingController controller, 
+    required String hint, 
+    required IconData icon, 
+    TextInputType keyboardType = TextInputType.text,
+    bool isPassword = false
+  }) {
     return Container(
       decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(30)),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        decoration: InputDecoration(border: InputBorder.none, hintText: hint, prefixIcon: Icon(icon, color: const Color(0xFF004D98)), contentPadding: const EdgeInsets.symmetric(vertical: 18)),
+        obscureText: isPassword,
+        decoration: InputDecoration(
+          border: InputBorder.none, 
+          hintText: hint, 
+          prefixIcon: Icon(icon, color: const Color(0xFF004D98)), 
+          contentPadding: const EdgeInsets.symmetric(vertical: 18)
+        ),
       ),
     );
   }
