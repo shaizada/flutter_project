@@ -95,7 +95,7 @@ class SellerStatisticsScreen extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 30),
           const SizedBox(height: 10),
-          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          Text(title, style: TextStyle(color: const Color.fromARGB(255, 90, 90, 90), fontSize: 14)),
           Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         ],
       ),
