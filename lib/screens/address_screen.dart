@@ -13,6 +13,10 @@ class AddressScreen extends StatefulWidget {
 class _AddressScreenState extends State<AddressScreen> {
   late TextEditingController _addressController;
 
+  // Түстік палитра - кодты бір жерден басқару үшін
+  final Color primaryBlue = const Color(0xFF004D98);
+  final Color primaryRed = const Color(0xFFA50044);
+
   @override
   void initState() {
     super.initState();
@@ -20,50 +24,84 @@ class _AddressScreenState extends State<AddressScreen> {
   }
 
   @override
+  void dispose() {
+    // Памятьты босату үшін контроллерді жауып тастаймыз
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    String title = widget.lang == 'KZ' ? 'Жеткізу мекен-жайы' : (widget.lang == 'RU' ? 'Адрес доставки' : 'Delivery Address');
-    String label = widget.lang == 'KZ' ? 'Толық мекен-жай' : (widget.lang == 'RU' ? 'Полный адрес' : 'Full Address');
-    String buttonText = widget.lang == 'KZ' ? 'Сақтау' : (widget.lang == 'RU' ? 'Сохранить' : 'Save');
+    // Локализацияны жеңілдету үшін Map қолданамыз
+    final texts = {
+      'KZ': {'title': 'Жеткізу мекен-жайы', 'label': 'Толық мекен-жай', 'btn': 'Сақтау'},
+      'RU': {'title': 'Адрес доставки', 'label': 'Полный адрес', 'btn': 'Сохранить'},
+      'EN': {'title': 'Delivery Address', 'label': 'Full Address', 'btn': 'Save'},
+    }[widget.lang] ?? {'title': 'Delivery Address', 'label': 'Full Address', 'btn': 'Save'};
 
     return Scaffold(
-      backgroundColor: const Color(0xFF004D98),
+      backgroundColor: primaryBlue,
       appBar: AppBar(
-        title: Text(title),
-        backgroundColor: const Color(0xFFA50044),
+        title: Text(texts['title']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: primaryRed,
         elevation: 0,
+        centerTitle: true,
       ),
       body: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           children: [
             const SizedBox(height: 20),
-            TextField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: label,
-                prefixIcon: const Icon(Icons.location_city, color: Color(0xFF004D98)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-              ),
-            ),
+            _buildAddressField(texts['label']!), // Жеке виджет арқылы шақыру
             const Spacer(),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFA50044),
-                minimumSize: const Size(double.infinity, 55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              ),
-              onPressed: () {
-                Navigator.pop(context, _addressController.text); // Жаңа адресті артқа қайтару
-              },
-              child: Text(buttonText, style: const TextStyle(color: Colors.white, fontSize: 18)),
-            ),
-            const SizedBox(height: 20),
+            _buildSaveButton(texts['btn']!),    // Жеке батырма виджеті
+            const SizedBox(height: 10),
           ],
         ),
+      ),
+    );
+  }
+
+  // Мекен-жай енгізу өрісі (Custom TextField)
+  Widget _buildAddressField(String labelText) {
+    return TextField(
+      controller: _addressController,
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: TextStyle(color: primaryBlue),
+        prefixIcon: Icon(Icons.location_on_rounded, color: primaryBlue),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: primaryBlue, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+    );
+  }
+
+  // Сақтау батырмасы
+  Widget _buildSaveButton(String text) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryRed,
+        minimumSize: const Size(double.infinity, 60),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 4,
+      ),
+      onPressed: () {
+        // Мәліметті артқа жіберу
+        Navigator.pop(context, _addressController.text.trim());
+      },
+      child: Text(
+        text.toUpperCase(), 
+        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
       ),
     );
   }
