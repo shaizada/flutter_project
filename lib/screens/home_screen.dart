@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'KZ': {
       'title': 'БАРСА ДҮКЕНІ',
       'search': 'Тауарларды іздеу...',
-      'cat_all': 'Барлығы',
+      'cat_all': 'Барлық өнімдер',
       'cat_kit': 'Форма',
       'cat_train': 'Жаттығу',
       'cat_acc': 'Аксессуарлар',
@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     'RU': {
       'title': 'МАГАЗИН БАРСЫ',
       'search': 'Поиск товаров...',
-      'cat_all': 'Все',
+      'cat_all': 'Все товары',
       'cat_kit': 'Форма',
       'cat_train': 'Тренировка',
       'cat_acc': 'Аксессуары',
