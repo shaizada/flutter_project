@@ -103,7 +103,7 @@ class SellerProfileScreen extends StatelessWidget {
                 label: Text(t['logout']),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: Colors.red,
+                  foregroundColor: const Color.fromARGB(255, 129, 9, 0),
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
