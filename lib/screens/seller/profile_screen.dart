@@ -26,7 +26,7 @@ class SellerProfileScreen extends StatelessWidget {
         'security': 'Қауіпсіздік',
         'logout': 'ЖҮЙЕДЕН ШЫҒУ',
         'role': 'Ресми сатушы',
-        'choose_lang': 'Тіл таңдаңыз'
+        'choose_lang': 'Тілді таңдаңыз'
       },
       'RU': {
         'profile': 'ПРОФИЛЬ',
