@@ -101,7 +101,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
             const SizedBox(height: 30),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFA50044),
+                backgroundColor: const Color.fromARGB(255, 157, 1, 66),
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               ),
