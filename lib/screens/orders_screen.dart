@@ -27,7 +27,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(txt['title']!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: const Color(0xFF004D98),
+        backgroundColor: const Color.fromARGB(255, 5, 83, 161),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: myOrders.isEmpty
