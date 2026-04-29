@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // ЖАҢА ИМПОРТ
-import 'dart:io'; // Файлдармен жұмыс істеу үшін
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart'; // БАЗАҒА КЕРЕК ИМПОРТ
 
 class EditProductScreen extends StatefulWidget {
   final Map<String, dynamic>? product;
@@ -14,7 +15,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   
-  // Суретті сақтайтын айнымалы
   XFile? _imageFile; 
   final ImagePicker _picker = ImagePicker();
 
@@ -22,19 +22,40 @@ class _EditProductScreenState extends State<EditProductScreen> {
   void initState() {
     super.initState();
     if (widget.product != null) {
-      _nameController.text = widget.product!['name'];
-      _priceController.text = widget.product!['price'];
-      // Егер бұрыннан сурет болса, оны жүктеу логикасын кейін қосамыз
+      _nameController.text = widget.product!['name'] ?? "";
+      _priceController.text = widget.product!['price'] ?? "";
     }
   }
 
-  // Галереядан сурет таңдау функциясы
+  // Галереядан сурет таңдау
   Future<void> _pickImage() async {
     final XFile? selectedImage = await _picker.pickImage(source: ImageSource.gallery);
     if (selectedImage != null) {
       setState(() {
         _imageFile = selectedImage;
       });
+    }
+  }
+
+  // БАЗАҒА САҚТАУ ФУНКЦИЯСЫ
+  Future<void> _saveProductToFirebase() async {
+    if (_nameController.text.isEmpty || _priceController.text.isEmpty) return;
+
+    try {
+      // "products" деген коллекцияға сақтаймыз
+      await FirebaseFirestore.instance.collection('products').add({
+        'name': _nameController.text,
+        'price': _priceController.text,
+        'timestamp': FieldValue.serverTimestamp(),
+        // Суретті Firebase Storage-ге салуды келесі сабақта қосамыз
+        'imagePath': _imageFile?.path ?? "", 
+      });
+
+      if (mounted) {
+        Navigator.pop(context); // Сақталған соң артқа қайту
+      }
+    } catch (e) {
+      print("Қате шықты: $e");
     }
   }
 
@@ -45,11 +66,10 @@ class _EditProductScreenState extends State<EditProductScreen> {
         title: Text(widget.product == null ? "Жаңа тауар" : "Өңдеу"),
         backgroundColor: const Color(0xFF004D98),
       ),
-      body: SingleChildScrollView( // Экранға сыймай қалмауы үшін
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // СУРЕТ ТАҢДАУ АЙМАҒЫ
             GestureDetector(
               onTap: _pickImage,
               child: Container(
@@ -85,14 +105,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               ),
-              onPressed: () {
-                // Мәліметтерді артқа қайтару
-                Navigator.pop(context, {
-                  "name": _nameController.text,
-                  "price": _priceController.text,
-                  "image": _imageFile?.path // Суреттің жолын жібереміз
-                });
-              },
+              onPressed: _saveProductToFirebase, // ОСЫ ЖЕРДЕ БАЗАҒА ЖІБЕРЕМІЗ
               child: const Text("САҚТАУ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             )
           ],

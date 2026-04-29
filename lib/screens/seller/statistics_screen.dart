@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Міндетті түрде керек
 
 class SellerStatisticsScreen extends StatelessWidget {
   const SellerStatisticsScreen({super.key});
@@ -13,44 +14,76 @@ class SellerStatisticsScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // Жалпы табыс карточкасы
-            _buildStatCard("Жалпы табыс", "1,250,000 ₸", Icons.payments, Colors.green),
-            const SizedBox(height: 15),
-            Row(
+      body: StreamBuilder<QuerySnapshot>(
+        // "orders" коллекциясын нақты уақытта бақылаймыз
+        stream: FirebaseFirestore.instance.collection('orders').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("Деректер табылмады", style: TextStyle(color: Colors.white)));
+          }
+
+          // --- ЕСЕПТЕУЛЕР БӨЛІМІ ---
+          double totalRevenue = 0;
+          int totalOrders = snapshot.data!.docs.length;
+          var orderDocs = snapshot.data!.docs;
+
+          for (var doc in orderDocs) {
+            var data = doc.data() as Map<String, dynamic>;
+            // "price" өрісін (number) алып, жалпы табысқа қосамыз
+            totalRevenue += (data['price'] ?? 0).toDouble();
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
               children: [
-                Expanded(child: _buildStatCard("Тапсырыстар", "156", Icons.shopping_bag, Colors.orange)),
-                const SizedBox(width: 15),
-                Expanded(child: _buildStatCard("Клиенттер", "89", Icons.people, Colors.blue)),
+                // ЖАЛПЫ ТАБЫС (Базадан есептелген)
+                _buildStatCard("Жалпы табыс", "${totalRevenue.toStringAsFixed(0)} ₸", Icons.payments, Colors.green),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    // ТАПСЫРЫСТАР САНЫ (Құжаттар саны)
+                    Expanded(child: _buildStatCard("Тапсырыстар", totalOrders.toString(), Icons.shopping_bag, Colors.orange)),
+                    const SizedBox(width: 15),
+                    // КЛИЕНТТЕР САНЫ (Мысалы, static 89 немесе басқа коллекциядан алуға болады)
+                    Expanded(child: _buildStatCard("Клиенттер", "89", Icons.people, Colors.blue)),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                const Text(
+                  "Соңғы белсенділік",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                // БАЗАДАН КЕЛГЕН СОҢҒЫ ТАПСЫРЫСТАР ТІЗІМІ
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: orderDocs.length,
+                    itemBuilder: (context, index) {
+                      var data = orderDocs[index].data() as Map<String, dynamic>;
+                      return _buildActivityItem(
+                        "${data['productName'] ?? 'Тауар'} сатылды", 
+                        "Жаңа", // Уақытын базаға timestamp қосу арқылы шығаруға болады
+                        "+${data['price']} ₸"
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 30),
-            const Text(
-              "Соңғы белсенділік",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 15),
-            // Уақытша тізім
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildActivityItem("Jersey 2024 сатылды", "12 мин бұрын", "+45,000 ₸"),
-                  _buildActivityItem("Жаңа тапсырыс #442", "1 сағ бұрын", "Күтуде"),
-                  _buildActivityItem("Away Kit сатылды", "3 сағ бұрын", "+42,000 ₸"),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,

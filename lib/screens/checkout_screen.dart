@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import '../main.dart'; // Глобалды айнымалыларға (myOrders, cartItems) қол жеткізу үшін
+import 'package:cloud_firestore/cloud_firestore.dart'; // ЖАҢА: Firebase импорты
+import '../main.dart'; 
 
 class CheckoutScreen extends StatefulWidget {
   final List<Map<String, dynamic>> items;
@@ -24,42 +25,56 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isProcessing = false;
   bool _isSuccess = false;
 
-  // Бағаны есептеу (әр тауардың санына көбейтуді ұмытпаймыз)
   double get totalPrice {
     return widget.items.fold(0, (sum, item) => sum + ((item['price'] ?? 0) * (item['quantity'] ?? 1)));
   }
 
-// CheckoutScreen ішіндегі _processOrder-ді осыған ауыстыр:
-void _processOrder() async {
-  setState(() => _isProcessing = true);
+  // Бұл функция енді Firebase-ке де дерек жібереді
+  void _processOrder() async {
+    setState(() => _isProcessing = true);
 
-  await Future.delayed(const Duration(seconds: 2));
+    // 1. Firebase-ке жіберу бөлімі (Статистика үшін)
+    try {
+      for (var item in widget.items) {
+        // "orders" коллекциясына жаңа тапсырыс қосу
+        await FirebaseFirestore.instance.collection('orders').add({
+          'productName': item['name'],
+          'price': item['price'],
+          'status': 'Жаңа',
+          'timestamp': FieldValue.serverTimestamp(), // Нақты уақыт
+        });
+      }
+    } catch (e) {
+      debugPrint("Firebase Error: $e");
+    }
 
-  if (mounted) {
-    setState(() {
-      // Тапсырысты сақтау
-      myOrders.add({
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'date': DateTime.now(),
-        'items': List.from(widget.items), 
-        'total': totalPrice,
+    // Имитация загрузки
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (mounted) {
+      setState(() {
+        // 2. СЕНІҢ ЛОГИКАҢ: Локальді тізімге сақтау
+        myOrders.add({
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'date': DateTime.now(),
+          'items': List.from(widget.items), 
+          'total': totalPrice,
+        });
+
+        // Себетті тазарту
+        cartItems.clear(); 
+
+        _isProcessing = false;
+        _isSuccess = true;
       });
+    }
 
-      // СЕБЕТТІ ТАЗАРТУДЫ ОСЫ ЖЕРДЕ ЖАСАЙМЫЗ
-      cartItems.clear(); 
-
-      _isProcessing = false;
-      _isSuccess = true;
-    });
+    // Күте тұру және артқа қайту
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
-
-  // Күте тұру және қайту
-  await Future.delayed(const Duration(seconds: 3));
-  if (mounted) {
-    // popUntil қолданғанда сақ болу керек, егер маршруттар дұрыс болмаса қате береді
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -72,11 +87,11 @@ void _processOrder() async {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-             Lottie.network(
-  'https://raw.githubusercontent.com/xvrh/lottie-flutter/master/example/assets/Mobilo/A.json', 
-  width: 250,
-  repeat: false,
-),
+              Lottie.network(
+                'https://raw.githubusercontent.com/xvrh/lottie-flutter/master/example/assets/Mobilo/A.json', 
+                width: 250,
+                repeat: false,
+              ),
               const SizedBox(height: 20),
               Text(
                 isKZ ? "Тапсырыс қабылданды!" : "Заказ принят!",
