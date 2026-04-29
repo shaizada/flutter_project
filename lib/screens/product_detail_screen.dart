@@ -32,7 +32,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'buy_now': 'ҚАЗІР САТЫП АЛУ',
         'added': 'себетке қосылды!',
         'official': 'Ресми Barça өнімі • 2024/25 маусымы',
-        'material': 'Жоғары сапалы Nike Dri-FIT технологиясы. 100% полиэстер.',
+        'material': 'Nike Dri-FIT: Терді тез шығарып, денені құрғақ ұстайды.Сапа: 100% премиум полиэстер, жеңіл әрі жұмсақ мата.Төзімділік: Пішіні мен түсін ұзақ сақтайды, жууға төзімді.',
       },
       'RU': {
         'select_size': 'Выберите размер:',
@@ -40,7 +40,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'buy_now': 'КУПИТЬ СЕЙЧАС',
         'added': 'добавлено в корзину!',
         'official': 'Официальный продукт Barça • Сезон 2024/25',
-        'material': 'Технология Nike Dri-FIT высокого качества. 100% полиэстер.',
+        'material': 'Nike Dri-FIT: Быстро отводит влагу, сохраняя кожу сухой.Качество: 100% премиум полиэстер, легкий и мягкий материал.Долговечность: Сохраняет форму и цвет после многих стирок.',
       },
       'EN': {
         'select_size': 'Select size:',
@@ -48,7 +48,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'buy_now': 'BUY NOW',
         'added': 'added to cart!',
         'official': 'Official Barça Product • 2024/25 Season',
-        'material': 'High-quality Nike Dri-FIT technology. 100% polyester.',
+        'material': 'Nike Dri-FIT: Wicks sweat away to keep you dry and comfortable.Quality: 100% premium polyester, ultra-light and soft fabric.Durability: Retains shape and color vibrancy after multiple washes.',
       },
     };
 
