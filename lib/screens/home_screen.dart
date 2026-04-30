@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore қосылды
+import 'dart:io'; // Файлдарды оқу үшін
 import '../data/products.dart';
 import '../main.dart';
 import 'product_detail_screen.dart';
@@ -37,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'delivery': 'Жедел жеткізу',
       'apply': 'Қолдану',
       'reset': 'Тастау',
+      'no_items': 'Тауар табылмады',
     },
     'RU': {
       'title': 'МАГАЗИН БАРСЫ',
@@ -54,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'delivery': 'Экспресс-доставка',
       'apply': 'Применить',
       'reset': 'Сбросить',
+      'no_items': 'Ничего не найдено',
     },
     'EN': {
       'title': 'BARÇA STORE',
@@ -71,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'delivery': 'Fast Delivery',
       'apply': 'Apply',
       'reset': 'Reset',
+      'no_items': 'No products found',
     },
   };
 
@@ -166,43 +171,44 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Суретті көрсету логикасы (Firebase-тен келген жолды оқу үшін)
+  Widget _buildProductImage(String imagePath) {
+    if (imagePath.startsWith('assets/')) {
+      return Image.asset(imagePath, fit: BoxFit.contain);
+    } else if (imagePath.startsWith('http')) {
+      return Image.network(imagePath, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image));
+    } else {
+      return Image.file(File(imagePath), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = localizedText[widget.lang]!;
-
-    final filteredProducts = barcaProducts.where((product) {
-      final nameMatches = product['name'].toLowerCase().contains(_searchQuery.toLowerCase());
-      final categoryMatches = _selectedCategory == "All" || product['category'] == _selectedCategory;
-      final priceMatches = product['price'] >= _currentRangeValues.start && product['price'] <= _currentRangeValues.end;
-      return nameMatches && categoryMatches && priceMatches;
-    }).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
         slivers: [
-          // БҰЛ БӨЛІМ СКРОЛЛ КЕЗІНДЕ ЖОҒАЛЫП КЕТЕДІ (SLIVER EFFECT)
           SliverAppBar(
             title: Text(t['title']!,
                 style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, color: Colors.white)),
             backgroundColor: Colors.transparent,
             centerTitle: true,
             elevation: 0,
-            floating: true, // Скролл жасағанда жоғалу үшін
-            snap: true,     // Сәл ғана тартқанда қайта шығу үшін
-            pinned: false,  // Төбеде қатып тұрмауы үшін
+            floating: true,
+            snap: true,
+            pinned: false,
             actions: [
               IconButton(
                 icon: const Icon(Icons.tune, color: Colors.white),
                 onPressed: _showFilterPanel,
               )
             ],
-            // Поиск пен категорияларды осында орналастырамыз
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(130),
               child: Column(
                 children: [
-                  // --- ПОИСК ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: TextField(
@@ -222,8 +228,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-
-                  // --- ГОРИЗОНТАЛЬНЫЕ КАТЕГОРИИ ---
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -242,145 +246,175 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ТАУАРЛАР КЕСТЕСІ (GRID)
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: filteredProducts.isEmpty 
-                ? const SliverFillRemaining(
-                    child: Center(child: Text("Ничего не найдено", style: TextStyle(color: Colors.white))),
-                  )
-                : SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 250,
-                      childAspectRatio: 0.68, 
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final product = filteredProducts[index];
-                        bool isFavorite = favoriteItems.any((item) => item['name'] == product['name']);
+          // FIREBASE STREAM BUILDER ОСЫ ЖЕРДЕ
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('products').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator(color: Colors.white)));
+              }
 
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProductDetailScreen(
-                                  product: product,
-                                  lang: widget.lang,
+              // Firebase-тен келген деректерді фильтрлеу
+              final docs = snapshot.data?.docs ?? [];
+              final List<Map<String, dynamic>> firebaseProducts = docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return {
+                  'id': doc.id,
+                  'name': data['name'] ?? '',
+                  'price': double.tryParse(data['price'].toString()) ?? 0.0,
+                  'image': data['imagePath'] ?? data['image'] ?? 'assets/images/placeholder.png',
+                  'category': data['category'] ?? 'All',
+                  'description': data['description'] ?? '',
+                };
+              }).toList();
+
+              // Іздеу және фильтрлеу логикасы
+              final filteredProducts = firebaseProducts.where((product) {
+                final nameMatches = product['name'].toLowerCase().contains(_searchQuery.toLowerCase());
+                final categoryMatches = _selectedCategory == "All" || product['category'] == _selectedCategory;
+                final priceMatches = product['price'] >= _currentRangeValues.start && product['price'] <= _currentRangeValues.end;
+                return nameMatches && categoryMatches && priceMatches;
+              }).toList();
+
+              if (filteredProducts.isEmpty) {
+                return SliverFillRemaining(
+                  child: Center(child: Text(t['no_items']!, style: const TextStyle(color: Colors.white))),
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 250,
+                    childAspectRatio: 0.68, 
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final product = filteredProducts[index];
+                      bool isFavorite = favoriteItems.any((item) => item['name'] == product['name']);
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductDetailScreen(
+                                product: product,
+                                lang: widget.lang,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.92),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: Center(
+                                          child: _buildProductImage(product['image']),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: IconButton(
+                                        icon: Icon(
+                                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                                          color: const Color(0xFFA50044),
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            if (isFavorite) {
+                                              favoriteItems.removeWhere((item) => item['name'] == product['name']);
+                                            } else {
+                                              favoriteItems.add(product);
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.92),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Stack(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12.0),
-                                          child: Center(
-                                            child: Image.asset(
-                                              product['image'],
-                                              fit: BoxFit.contain,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['name'],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${product['price']} ₸',
+                                      style: const TextStyle(
+                                        color: Color(0xFFA50044),
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 34,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF004D98),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            final i = cartItems.indexWhere((item) => item['name'] == product['name']);
+                                            if (i != -1) {
+                                              cartItems[i]['quantity']++;
+                                            } else {
+                                              cartItems.add({...product, 'quantity': 1, 'isSelected': true, 'size': 'M'});
+                                            }
+                                          });
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('${product['name']} ${t['added']}'),
+                                              duration: const Duration(seconds: 1),
+                                              behavior: SnackBarBehavior.floating,
+                                              backgroundColor: const Color(0xFF004D98),
                                             ),
-                                          ),
-                                        ),
+                                          );
+                                        },
+                                        child: Text(t['add']!, style: const TextStyle(fontSize: 11)),
                                       ),
-                                      Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: IconButton(
-                                          icon: Icon(
-                                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                                            color: const Color(0xFFA50044),
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              if (isFavorite) {
-                                                favoriteItems.removeWhere((item) => item['name'] == product['name']);
-                                              } else {
-                                                favoriteItems.add(product);
-                                              }
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product['name'],
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${product['price']} ₸',
-                                        style: const TextStyle(
-                                          color: Color(0xFFA50044),
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 34,
-                                        child: ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF004D98),
-                                            foregroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            padding: EdgeInsets.zero,
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              final i = cartItems.indexWhere((item) => item['name'] == product['name']);
-                                              if (i != -1) {
-                                                cartItems[i]['quantity']++;
-                                              } else {
-                                                cartItems.add({...product, 'quantity': 1, 'isSelected': true, 'size': 'M'});
-                                              }
-                                            });
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('${product['name']} ${t['added']}'),
-                                                duration: const Duration(seconds: 1),
-                                                behavior: SnackBarBehavior.floating,
-                                                backgroundColor: const Color(0xFF004D98),
-                                              ),
-                                            );
-                                          },
-                                          child: Text(t['add']!, style: const TextStyle(fontSize: 11)),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      childCount: filteredProducts.length,
-                    ),
+                        ),
+                      );
+                    },
+                    childCount: filteredProducts.length,
                   ),
+                ),
+              );
+            },
           ),
         ],
       ),
